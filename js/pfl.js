@@ -602,23 +602,28 @@ class PFL extends HTMLElement {
 
         const href = hash ? url + "#" + hash : url;
 
-        // Block dangerous URL schemes (javascript:, data:, vbscript:, etc.).
-        // Relative URLs resolve to the current page's protocol, so they are
-        // implicitly covered by allowing the page's own protocol.
+        // Only allow safe URL schemes; reject javascript:, data:, vbscript:, etc.
+        // Relative URLs and same-site links resolve to the page's own protocol
+        // via URL(), so they are implicitly covered.
+        const SAFE_PROTOCOLS = ['http:', 'https:', window.location.protocol];
+        let safeHref;
         try {
           const urlObj = new URL(href, window.location.href);
-          if (!['http:', 'https:'].includes(urlObj.protocol) && urlObj.protocol !== window.location.protocol) {
+          if (!SAFE_PROTOCOLS.includes(urlObj.protocol)) {
             return; // Reject — do not create the link
           }
           if (urlObj.origin !== window.location.origin) {
             a.target = "_blank";
           }
+          // Use the URL-resolved href so the value is always scheme-prefixed and
+          // properly serialised, which avoids ambiguous raw-string assignments.
+          safeHref = urlObj.href;
         } catch (_) {
           return; // Malformed URL — do not create the link
         }
 
         a.rel = "noopener noreferrer";
-        a.href = href;
+        a.href = safeHref;
 
         element.parentNode.insertBefore(a, element);
         a.appendChild(element);
