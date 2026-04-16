@@ -19,5 +19,6 @@
     "dataAvailability": "Data de disponibilização",
     "externalFunding": "Financiamento externo",
     "indexedIn": "Indexado em",
-    "informationFooter": "Para saber mais sobre estes factos de publicação, clique em"
+    "informationFooter": "Para saber mais sobre estes factos de publicação, clique em",
+    "editorAndBoard": "Equipa editorial <a data-value=\"editorialTeamUrl\" data-attribute=\"href\">lista</a>"
 }

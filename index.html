@@ -11,11 +11,14 @@
       font-weight: 100 900;
      }
 </style><!-- indentation intentionally removed for presentation in integration section -->
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/styles/default.min.css">
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/highlight.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/languages/go.min.js"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/styles/default.min.css" crossorigin="anonymous">
+  <!-- TODO: add integrity="sha384-..." SRI hash once computed from the canonical CDN copy -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/highlight.min.js" crossorigin="anonymous"></script>
+  <!-- TODO: add integrity="sha384-..." SRI hash once computed from the canonical CDN copy -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/languages/go.min.js" crossorigin="anonymous"></script>
+  <!-- TODO: add integrity="sha384-..." SRI hash once computed from the canonical CDN copy -->
 
-  <script>hljs.highlightAll();</script>
+  <script>document.addEventListener("DOMContentLoaded", function() { hljs.highlightAll(); });</script>
   <script>
    function showMarkup(sourceId, targetId, language) {
      var markup = document.getElementById(sourceId).cloneNode(true);
@@ -83,6 +86,8 @@
 
         // Editorial team URL
         editorialTeamUrl: "/about/editorialTeam",
+        // Set to true when the platform surfaces ORCID iDs for the editorial board
+        editorialTeamOrcidSupported: false,
 
         // Academic society
         pflAcademicSociety: "Example Academic Society",
@@ -96,19 +101,35 @@
     };
 
       const localeUrl = pflData.baseUrl + '/locale/' + pflData.locale + '.json';
+      const fallbackUrl = pflData.baseUrl + '/locale/en.json';
+
+      function applyPflLabels(labels) {
+        var pfl = document.querySelector('publication-facts-label');
+        pfl.data = Object.assign({}, pflData, {labels: labels});
+      }
+
         fetch(localeUrl)
           .then(function(response) {
+            if (!response.ok) throw new Error('locale not found');
             return response.json();
           })
           .then(function(labels) {
-            var pfl = document.querySelector('publication-facts-label');
-            pfl.data = Object.assign({}, pflData, {labels: labels});
+            applyPflLabels(labels);
           })
-          .catch(function(err) {
-            console.warn('PFL: failed to load translations', err);
+          .catch(function() {
+            // Fall back to English if the locale file is not available
+            fetch(fallbackUrl)
+              .then(function(response) {
+                if (!response.ok) throw new Error('fallback locale not found');
+                return response.json();
+              })
+              .then(function(labels) {
+                applyPflLabels(labels);
+              })
+              .catch(function(err) {
+                console.warn('PFL: failed to load translations', err);
+              });
           });
-
-      pfl.data = {};
       
     });
 </script>

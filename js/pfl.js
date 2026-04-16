@@ -63,9 +63,12 @@ class PFL extends HTMLElement {
   }
 
   set data(value) {
-    const newData = Object.assign({}, this._data, value);
-
-    Object.assign(this._data, newData);
+    this._data = {
+      ...this._data,
+      ...value,
+      labels: { ...this._data.labels, ...(value.labels || {}) },
+      values: { ...this._data.values, ...(value.values || {}) },
+    };
     this._ready = true;
     this.render();
   }
@@ -541,6 +544,9 @@ class PFL extends HTMLElement {
             <dl>
               <div class="pfl-body-row pfl-orcid-icon">
                 <dt class="pfl-bold" data-label-html="editorAndBoard"></dt>
+                <span data-show="editorialTeamOrcidSupported">
+                  <img class="pfl-orcid-icon" data-src="orcid.svg" alt="ORCID" />
+                </span>
               </div>
 
               <div class="pfl-body-row" data-show="pflAcademicSociety">
@@ -594,14 +600,16 @@ class PFL extends HTMLElement {
         const a = document.createElement("a");
         a.setAttribute('class', 'wrapWithLink');
 
-        if (!url.includes("#")) {
-          a.target = "_blank";
-        }
+        const href = hash ? url + "#" + hash : url;
+        a.href = href;
 
-        if (hash) {
-          a.href = url + "#" + hash;
-        } else {
-          a.href = url;
+        // Open in a new tab only for URLs pointing to a different origin
+        try {
+          if (new URL(href, window.location.href).origin !== window.location.origin) {
+            a.target = "_blank";
+          }
+        } catch (_) {
+          // Malformed URL — leave target unset
         }
 
         a.rel = "noopener noreferrer";
@@ -620,7 +628,41 @@ class PFL extends HTMLElement {
       });
       shadowRoot.querySelectorAll(`[data-label-html="${key}"]`).forEach((el) => {
         if (typeof value === "string") {
-          el.innerHTML = value;
+          // Sanitize: parse the locale HTML and allow only <a> elements with
+          // safe data-* attributes. This prevents XSS while preserving the
+          // two-pass rendering that resolves data-value/data-attribute later.
+          const parser = new DOMParser();
+          const doc = parser.parseFromString(value, "text/html");
+          el.innerHTML = "";
+
+          function importSafe(node) {
+            if (node.nodeType === Node.TEXT_NODE) {
+              return document.createTextNode(node.textContent);
+            }
+            if (node.nodeType === Node.ELEMENT_NODE && node.tagName.toLowerCase() === "a") {
+              const a = document.createElement("a");
+              for (const attr of ["data-value", "data-attribute", "href"]) {
+                if (node.hasAttribute(attr)) a.setAttribute(attr, node.getAttribute(attr));
+              }
+              node.childNodes.forEach((child) => {
+                const safe = importSafe(child);
+                if (safe) a.appendChild(safe);
+              });
+              return a;
+            }
+            // For any other element type, recurse into its text content only
+            const span = document.createElement("span");
+            node.childNodes.forEach((child) => {
+              const safe = importSafe(child);
+              if (safe) span.appendChild(safe);
+            });
+            return span;
+          }
+
+          doc.body.childNodes.forEach((node) => {
+            const safe = importSafe(node);
+            if (safe) el.appendChild(safe);
+          });
         }
       });
     }
@@ -678,7 +720,7 @@ class PFL extends HTMLElement {
 
     const items = this._data.values.pflIndexList;
 
-    if (items.length > 0) {
+    if (items && items.length > 0) {
       const frag = document.createDocumentFragment();
 
       items.forEach((item) => {
