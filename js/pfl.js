@@ -601,18 +601,24 @@ class PFL extends HTMLElement {
         a.setAttribute('class', 'wrapWithLink');
 
         const href = hash ? url + "#" + hash : url;
-        a.href = href;
 
-        // Open in a new tab only for URLs pointing to a different origin
+        // Block dangerous URL schemes (javascript:, data:, vbscript:, etc.).
+        // Relative URLs resolve to the current page's protocol, so they are
+        // implicitly covered by allowing the page's own protocol.
         try {
-          if (new URL(href, window.location.href).origin !== window.location.origin) {
+          const urlObj = new URL(href, window.location.href);
+          if (!['http:', 'https:'].includes(urlObj.protocol) && urlObj.protocol !== window.location.protocol) {
+            return; // Reject — do not create the link
+          }
+          if (urlObj.origin !== window.location.origin) {
             a.target = "_blank";
           }
         } catch (_) {
-          // Malformed URL — leave target unset
+          return; // Malformed URL — do not create the link
         }
 
         a.rel = "noopener noreferrer";
+        a.href = href;
 
         element.parentNode.insertBefore(a, element);
         a.appendChild(element);
@@ -641,7 +647,10 @@ class PFL extends HTMLElement {
             }
             if (node.nodeType === Node.ELEMENT_NODE && node.tagName.toLowerCase() === "a") {
               const a = document.createElement("a");
-              for (const attr of ["data-value", "data-attribute", "href"]) {
+              // Only allow data-* attributes used by the two-pass renderer.
+              // Raw href is intentionally excluded: all URLs are resolved later
+              // via the data-value/data-attribute mechanism through wrapWithLink.
+              for (const attr of ["data-value", "data-attribute"]) {
                 if (node.hasAttribute(attr)) a.setAttribute(attr, node.getAttribute(attr));
               }
               node.childNodes.forEach((child) => {
