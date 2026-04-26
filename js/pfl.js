@@ -47,6 +47,9 @@ class PFL extends HTMLElement {
           },
         ],
 
+        // Organization memberships as array
+        pflOrgMemberships: [],
+
         // Editorial team URL
         editorialTeamUrl: "/about/editorialTeam",
 
@@ -538,6 +541,20 @@ class PFL extends HTMLElement {
               ></ul>
             </div>
 
+            <div class="pfl-body-row" id="pfl-member-row">
+              <h3
+                id="pfl-heading-member"
+                class="pfl-bold"
+                data-label="member"
+              ></h3>
+              <ul
+                class="pfl-list-item"
+                aria-labelledby="pfl-heading-member"
+                role="list"
+                data-list="pflOrgMemberships"
+              ></ul>
+            </div>
+
             <dl>
               <div class="pfl-body-row pfl-orcid-icon">
                 <dt class="pfl-bold" data-label-html="editorAndBoard"></dt>
@@ -703,6 +720,36 @@ class PFL extends HTMLElement {
       const li = document.createElement("li");
       li.innerHTML = "&mdash;";
       indexList.appendChild(li);
+    }
+
+    // Handle org memberships list
+    const memberRow = shadowRoot.getElementById("pfl-member-row");
+    const memberList = shadowRoot.querySelector('[data-list="pflOrgMemberships"]');
+    const orgItems = this._data.values.pflOrgMemberships;
+
+    if (orgItems && orgItems.length > 0) {
+      const frag = document.createDocumentFragment();
+
+      orgItems.forEach((item) => {
+        const href = String(item.url).trim();
+
+        const li = document.createElement("li");
+        const a = document.createElement("a");
+
+        a.href = href;
+        a.target = "_blank";
+        a.rel = "noopener noreferrer";
+        a.setAttribute("aria-description", item.description);
+
+        a.textContent = item.name; // auto-escaped
+
+        li.appendChild(a);
+        frag.appendChild(li);
+      });
+
+      memberList.appendChild(frag);
+    } else {
+      memberRow.style.display = "none";
     }
 
     // Handle conditional visibility
